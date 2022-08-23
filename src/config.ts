@@ -9,5 +9,5 @@ export default {
    * your game server and frontend to run on any host without ever having to reconfigure
    * the URL here.
    */
-  gameURL: 'http://localhost:8080'
+  gameURL: ''
 };

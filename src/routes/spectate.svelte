@@ -1,6 +1,12 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import config from '../config';
+	import { Application, Container, Text } from 'pixi.js';
 	import { createSocket } from '@code-game-project/client/dist/browser';
+	import { Game } from '../hoverrace/game';
+	import { Camera } from '../pixi/camera';
+	import { Hovercraft } from '../pixi/hovercraft';
+	import { Checkpoint, Type } from '../pixi/checkpoint';
 	import ErrorStack from '../components/error-stack.svelte';
 	import Header from '../components/header.svelte';
 	import Fullscreen from '../components/fullscreen.svelte';
@@ -9,83 +15,219 @@
 	import TableEmpty from '../components/table-empty.svelte';
 	import TableCell from '../components/table-cell.svelte';
 	import Footer from '../components/footer.svelte';
-	import { onMount } from 'svelte';
+
+	const SPRITE_SIDE_LENGTH = 256;
+	const WAITING_MSG = 'Waiting for players all players to be ready...';
+	const columWidths = '80% 20%';
 
 	let errors: string[] = [];
 	let canvas: HTMLCanvasElement;
-	let ctx: CanvasRenderingContext2D | null;
 	let isFullscreen: boolean;
 	let canvasContainerWidth: number;
 	let width = 300;
 	let height = (width / 16) * 9;
+	let pixiApp: Application;
+	const map = new Container();
+	const checkpointContainer = new Container();
+	const hovercraftContainer = new Container();
+	let status: Text;
+	let camera: Camera;
+	let follow: string | null = null;
+	let game: Game;
+	const players: {
+		[index: string]: { username: string; time: number | null };
+	} = {};
 
 	const resize = () => {
 		width = isFullscreen ? window.screen.availWidth : canvasContainerWidth;
 		height = isFullscreen ? window.screen.availHeight : (width / 16) * 9;
-		// give the canvas time to resize, which has the side effect of clearing before redrawing
-		setTimeout(draw, 0);
+		if (pixiApp) pixiApp.renderer.resize(width, height);
 	};
 
-	let dt = 0;
-	const draw = () => {
-		if (ctx) {
-			dt += 0.002 % 1;
-
-			const cx = width / 2;
-			const cy = height / 2;
-			const w = 200;
-			const h = 200;
-			const x = -w / 2;
-			const y = -h / 2;
-			const deg = dt * 360;
-
-			ctx.save();
-			ctx.clearRect(0, 0, width, height);
-			ctx.translate(cx, cy);
-			ctx.rotate((deg * Math.PI) / 180);
-			ctx.fillStyle = '#37ff00';
-			ctx.fillRect(x, y, w, h);
-			ctx.restore();
+	const unitMeasures = {
+		y: 31557600000,
+		mo: 2629800000,
+		w: 604800000,
+		d: 86400000,
+		h: 3600000,
+		m: 60000,
+		s: 1000,
+		ms: 1,
+	};
+	/**
+	 * Formats milliseconds as `1y 2mo 3w 4d 5h 6m 7s 8ms`.
+	 * @param millis Milliseconds to be formatted.
+	 */
+	function formatTime(millis: number): string {
+		millis = Math.abs(Math.floor(millis));
+		const parts: string[] = [];
+		for (const [unit, ms] of Object.entries(unitMeasures)) {
+			const unitValue = Math.floor(millis / ms);
+			if (unitValue !== 0) {
+				millis -= unitValue * ms;
+				parts.push(unitValue + unit);
+			}
 		}
+		return parts.join(' ');
+	}
+
+	let checkpointsCreated = false;
+	let checkpoints: { [index: string]: Checkpoint } = {};
+	const hovercrafts: { [index: string]: Hovercraft | null } = {};
+	const registerListeners = (game: Game) => {
+		game.onCheckpoints((data) => {
+			if (!checkpointsCreated) {
+				checkpointsCreated = true;
+				for (const { x, y } of data.checkpoints) {
+					const checkpoint = new Checkpoint(
+						Type.CHECKPOINT,
+						x,
+						y,
+						SPRITE_SIDE_LENGTH
+					);
+					checkpoints[checkpoint.id] = checkpoint;
+					checkpointContainer.addChild(checkpoint.getSprite());
+				}
+				const finish = new Checkpoint(
+					Type.FINISH,
+					data.finish_line.x,
+					data.finish_line.y,
+					SPRITE_SIDE_LENGTH
+				);
+				checkpoints[finish.id] = finish;
+				checkpointContainer.addChild(finish.getSprite());
+			} else {
+				const removed = new Set(Object.keys(checkpoints));
+				removed.delete('finish');
+				for (const checkpoint of data.checkpoints) {
+					removed.delete(Checkpoint.getIdByCoords(checkpoint.x, checkpoint.y));
+				}
+				for (const id of removed) {
+					checkpointContainer.removeChild(checkpoints[id].getSprite());
+					delete checkpoints[id];
+				}
+			}
+		});
+		game.onHovercrafts(async (data) => {
+			const removed = new Set(Object.keys(hovercrafts));
+			for (const [playerId, hovercraft] of Object.entries(data.hovercrafts)) {
+				if (!(playerId in hovercrafts)) {
+					hovercrafts[playerId] = null;
+					const username = await game.getUsername(playerId);
+					const hovercraft = new Hovercraft(username || undefined);
+					hovercrafts[playerId] = hovercraft;
+					hovercraftContainer.addChild(hovercraft.getContainer());
+					players[playerId] = {
+						username: username || 'unknown',
+						time: null,
+					};
+				} else {
+					removed.delete(playerId);
+				}
+				hovercrafts[playerId]?.update(
+					hovercraft.pos.x,
+					hovercraft.pos.y,
+					hovercraft.angle,
+					SPRITE_SIDE_LENGTH
+				);
+			}
+			for (const id of removed) {
+				const hovercraft = hovercrafts[id];
+				if (hovercraft) hovercraftContainer.removeChild(hovercraft.getSprite());
+				delete hovercrafts[id];
+			}
+			const follow = camera.following();
+			if (follow && follow in hovercrafts) {
+				const hovercraft = hovercrafts[follow];
+				if (hovercraft) {
+					const { x, y } = hovercraft.getContainer();
+					camera.focus(x, y);
+				}
+			}
+		});
+		game.onHovercraftsOnce((data) => {
+			const me = game.getSession()?.player_id;
+			if (me && Object.keys(data.hovercrafts).includes(me)) {
+				camera.startFollow(me);
+				follow = me;
+			}
+		});
+		game.onInProgress(() => {
+			status.text = '';
+			status.visible = false;
+		});
+		game.onReadyPlayers(({ everyone, players }) => {
+			const me = game.getSession()?.player_id;
+			if (everyone || (me && players.includes(me))) {
+				for (const checkpoint of Object.values(checkpoints))
+					checkpointContainer.removeChild(checkpoint.getSprite());
+				checkpoints = {};
+				checkpointsCreated = false;
+				status.visible = true;
+				status.text = WAITING_MSG;
+			}
+		});
+		game.onCountdown(({ value }) => {
+			status.text = value.toString();
+			status.visible = true;
+		});
+		game.onStart(() => {
+			for (const id of Object.keys(players)) {
+				players[id].time = null;
+				players[id] = players[id];
+			}
+			status.text = 'Goooo!';
+			status.visible = true;
+			setTimeout(() => (status.visible = false), 1500);
+		});
+		game.onFinishedPlayers((data) => {
+			for (const player of data.players) {
+				players[player.id].time = player.duration;
+				players[player.id] = players[player.id];
+			}
+		});
 	};
-
-	let columWidths = '80% 20%';
-	let finishers: { name: string; score: number }[] = [
-		{
-			name: 'Alice',
-			score: 100,
-		},
-		{
-			name: 'Bob',
-			score: 90,
-		},
-	];
-
-	// always remember to reassign when updating arrays in svelte
-	finishers = [
-		...finishers,
-		{
-			name: 'Charlie',
-			score: 20,
-		},
-	];
 
 	onMount(async () => {
-		ctx = canvas.getContext('2d');
+		pixiApp = new Application({
+			view: canvas,
+			backgroundColor: 0x0f0f0f,
+			width,
+			height,
+		});
 		resize();
-		setInterval(draw, 1000 / 30);
-		const gameId = new URLSearchParams(window.location.search).get('game_id');
+		pixiApp.stage.addChild(map);
+		map.addChild(checkpointContainer);
+		map.addChild(hovercraftContainer);
+		status = new Text(WAITING_MSG, { fill: '#00ff99', fontSize: 200 });
+		status.anchor.set(0.5);
+		status.y = -400;
+		map.addChild(status);
+		camera = new Camera(pixiApp, map);
+		camera.setScale(0.1);
+		const params = new URLSearchParams(window.location.search);
+		let gameId = params.get('game_id');
+		let playerId = params.get('player_id');
+		let playerSecret = params.get('player_secret');
 		if (gameId) {
-			try {
-				const socket = createSocket(config.gameURL);
-				// TODO: register event listeners here
-				await socket.spectate(gameId);
-				// TODO: work with the socket here
-			} catch (error) {
-				errors = [
-					...errors,
-					'Unable to connect to game. You likely have the wrong game ID.',
-				];
+			const socket = createSocket(config.gameURL);
+			game = new Game(socket, true);
+			registerListeners(game);
+			if (playerId && playerSecret) {
+				try {
+					await socket.connect(gameId, playerId, playerSecret);
+				} catch (error) {
+					errors = [...errors, 'Unable to connect to game.'];
+				}
+			} else {
+				try {
+					await socket.spectate(gameId);
+				} catch (error) {
+					errors = [
+						...errors,
+						'Unable to connect to game. You likely have the wrong game ID.',
+					];
+				}
 			}
 		} else {
 			errors = [...errors, 'Missing `game_id=` query parameter in URL.'];
@@ -98,36 +240,64 @@
 <Header />
 
 <main>
-	<section>
-		<p>
-			This page features an example score board as well as a canvas with a blue
-			background color and a green square on it. These are just examples of
-			elements you can use to create a way to view what's happening in your game.
-		</p>
-	</section>
 	<section bind:clientWidth={canvasContainerWidth}>
 		<Fullscreen bind:isFullscreen on:fullscreenChange={resize}>
-			<canvas slot="content" bind:this={canvas} {width} {height} />
+			<canvas
+				slot="content"
+				bind:this={canvas}
+				{width}
+				{height}
+				on:wheel|preventDefault={(ev) => camera.scaleBy(ev.deltaY)}
+				on:mousedown={(ev) => {
+					camera.startDrag(ev.offsetX, ev.offsetY);
+					follow = null;
+				}}
+				on:mousemove={(ev) => camera.drag(ev.offsetX, ev.offsetY)}
+				on:mouseup={() => camera.stopDrag()}
+			/>
 		</Fullscreen>
 	</section>
 	<section>
 		<Table minWidthPx={300}>
 			<div slot="head">
 				<TableRow {columWidths}>
-					<TableCell>Name</TableCell>
-					<TableCell>Score</TableCell>
+					<TableCell>Username</TableCell>
+					<TableCell>Time</TableCell>
 				</TableRow>
 			</div>
 			<div slot="body">
-				{#if finishers.length > 0}
-					{#each finishers as { name, score }}
-						<TableRow {columWidths}>
-							<TableCell>{name}</TableCell>
-							<TableCell>{score}</TableCell>
+				{#if Object.keys(players).length > 0}
+					{#each Object.entries(players)
+						.map(([id, { username, time }]) => {
+							return { id, username, time };
+						})
+						.sort((a, b) => {
+							if (a.time === null || b.time === null) return 0;
+							return a.time - b.time;
+						}) as { id, username, time }}
+						<TableRow
+							{columWidths}
+							pointer={true}
+							on:click={() => {
+								camera.startFollow(id);
+								follow = id;
+							}}
+						>
+							<TableCell>
+								<span class="username">{username}</span>
+								{#if follow === id}
+									<img
+										src="/icons/location.svg"
+										alt="tracking"
+										title="tracking"
+									/>
+								{/if}
+							</TableCell>
+							<TableCell>{time === null ? '--' : formatTime(time)}</TableCell>
 						</TableRow>
 					{/each}
 				{:else}
-					<TableEmpty>No one has finished yet.</TableEmpty>
+					<TableEmpty>No players detected.</TableEmpty>
 				{/if}
 			</div>
 		</Table>
@@ -139,6 +309,10 @@
 <style lang="scss" scoped>
 	canvas {
 		width: 100%;
-		background-color: hsl(208, 100%, 50%);
+		background-color: #0f0f0f;
+	}
+
+	span.username {
+		padding-right: var(--padding);
 	}
 </style>

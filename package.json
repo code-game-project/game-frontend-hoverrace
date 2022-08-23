@@ -37,6 +37,7 @@
 	"type": "module",
 	"dependencies": {
 		"@code-game-project/client": "^0.1.3",
+		"pixi.js": "^6.5.1",
 		"prismjs": "^1.28.0"
 	}
 }
