@@ -240,7 +240,7 @@
 <Header />
 
 <main>
-	<section bind:clientWidth={canvasContainerWidth}>
+	<section id="view" bind:clientWidth={canvasContainerWidth}>
 		<Fullscreen bind:isFullscreen on:fullscreenChange={resize}>
 			<canvas
 				slot="content"
@@ -307,6 +307,12 @@
 <Footer />
 
 <style lang="scss" scoped>
+	section#view {
+		border: 1px solid var(--background-light);
+		border-radius: var(--radius);
+		overflow: hidden;
+	}
+
 	canvas {
 		width: 100%;
 		background-color: #0f0f0f;
