@@ -164,7 +164,9 @@
 					</p>
 				{:else if presentVisible}
 					{#each logs as log, i (i)}
-						<DebugLog {...log} visible={filter[log.severity]} />
+						<div>
+							<DebugLog {...log} visible={filter[log.severity]} />
+						</div>
 					{/each}
 				{:else}
 					<p>No logs match the current filters. Try adding more filters.</p>
@@ -201,13 +203,15 @@
 	}
 
 	div#content {
-		overflow: auto;
-		scroll-snap-type: both mandatory;
-		scroll-snap-align: start;
-	}
-
-	div#content > p {
-		padding: var(--padding);
-		text-align: center;
+		overflow-y: auto;
+		overscroll-behavior-y: contain;
+		scroll-snap-type: y mandatory;
+		> p {
+			padding: var(--padding);
+			text-align: center;
+		}
+		> div:last-child {
+			scroll-snap-align: start;
+		}
 	}
 </style>
