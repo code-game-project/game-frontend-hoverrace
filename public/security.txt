@@ -1,4 +1,4 @@
-# This is the security.txt file for MyGame
+# This is the security.txt file for Hoverrace
 # https://github.com/code-game-project/game-frontend-template-svelte-hoverrace
 # More information about security.txt
 # https://securitytxt.org
