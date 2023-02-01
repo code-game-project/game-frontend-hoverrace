@@ -30,6 +30,6 @@ export class Hovercraft {
   public update(x: number, y: number, angle: number, sideLength: number) {
     this.container.x = x * sideLength;
     this.container.y = -1 * y * sideLength;
-    this.sprite.rotation = (angle / 360) * 2 * Math.PI;
+    this.sprite.angle = -angle+90;
   }
 }
