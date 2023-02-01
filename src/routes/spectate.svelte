@@ -206,14 +206,14 @@
 		camera = new Camera(pixiApp, map);
 		camera.setScale(0.1);
 		const params = new URLSearchParams(window.location.search);
-		let gameId = params.get('game_id');
-		let playerId = params.get('player_id');
-		let playerSecret = params.get('player_secret');
+		const gameId = params.get('game_id');
+		const playerId = params.get('player_id');
+		const playerSecret = params.get('player_secret');
 		if (gameId) {
 			const socket = createSocket(config.gameURL);
 			game = new Game(socket, true);
 			registerListeners(game);
-			if (playerId && playerSecret) {
+			if (playerId) {
 				try {
 					await socket.connect(gameId, playerId, playerSecret);
 				} catch (error) {
