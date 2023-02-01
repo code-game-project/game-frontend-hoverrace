@@ -30,13 +30,16 @@ export class Camera {
   }
 
   public setScale(scale: number) {
+    this.app.stage.enableTempParent
+
     this.scale = scale;
     this.app.stage.scale.set(this.scale);
-    this.focus();
+
+    this.focus()
   }
 
   public scaleBy(dy: number) {
-    this.setScale(Math.min(Math.max(0.01, this.scale + dy * -0.001), 4));
+    this.setScale(Math.min(Math.max(0.01, this.scale + dy * -0.003*this.scale), 4));
   }
 
   public startFollow(playerId: string) {
@@ -59,10 +62,10 @@ export class Camera {
     this.dragging = true;
   }
 
-  public drag(dx: number, dy: number) {
-    if (this.dragging) this.moveBy(dx - this.lastX, dy - this.lastY);
-    this.lastX = dx;
-    this.lastY = dy;
+  public drag(mouseX: number, mouseY: number) {
+    if (this.dragging) this.moveBy(mouseX - this.lastX, mouseY - this.lastY);
+    this.lastX = mouseX;
+    this.lastY = mouseY;
   }
 
   public stopDrag() {
