@@ -38,6 +38,10 @@ export class Camera {
     this.focus()
   }
 
+  public getScale(): number {
+    return this.scale;
+  }
+
   public scaleBy(dy: number) {
     this.setScale(Math.min(Math.max(0.01, this.scale + dy * -0.003*this.scale), 4));
   }

@@ -136,6 +136,7 @@
         hovercrafts[playerId]?.update(
           hovercraft.pos.x,
           hovercraft.pos.y,
+          camera.getScale(),
           hovercraft.angle,
           SPRITE_SIDE_LENGTH
         );
@@ -193,6 +194,15 @@
       status.visible = true;
       setTimeout(() => (status.visible = false), 1500);
     });
+    game.onInProgress(() => {
+      for (const id of Object.keys(players)) {
+        players[id].time = null;
+        players[id].checkpoints = 0;
+        players[id] = players[id];
+      }
+      status.visible = false;
+      setTimeout(() => (status.visible = false), 1500);
+    });
     game.onFinishedPlayers((data) => {
       for (const player of data.players) {
         players[player.id].time = player.duration;
@@ -207,12 +217,15 @@
       backgroundColor: 0x0f0f0f,
       width,
       height,
+      antialias: true,
+      autoDensity: true,
     });
     resize();
     pixiApp.stage.addChild(map);
     map.addChild(checkpointContainer);
     map.addChild(hovercraftContainer);
     status = new Text(WAITING_MSG, { fill: "#00ff99", fontSize: 200 });
+    status.roundPixels = true;
     status.anchor.set(0.5);
     status.y = -400;
     map.addChild(status);
