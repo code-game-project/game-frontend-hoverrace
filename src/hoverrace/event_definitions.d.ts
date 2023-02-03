@@ -1,6 +1,6 @@
 export interface GameConfig {
     /**
-     * The speed at which the throttle reacts to user input. default = 1
+     * The speed at which the thrust level reacts to user input. default = 1
      */
   throttle_speed?: number,
     /**
@@ -19,6 +19,10 @@ export interface GameConfig {
      * The amount of checkpoints per game. default = 10
      */
   checkpoint_count?: number,
+    /**
+     * The time in seconds that a game is allowed to last. default = infinite
+     */
+  timeout?: number,
 }
 
 /**
@@ -30,18 +34,18 @@ export interface ReadyCmd {
 }
 
 /**
- * The `throttle` command allows you to change your throttle level and direction.
+ * The `control` command allows you to change your throttle level and direction.
  * **NOTE:** These values are targets. The hovercraft needs some time to reach the desired values.
  */
-export interface ThrottleCmd {
-  name: "throttle",
+export interface ControlCmd {
+  name: "control",
   data: {
     /**
-     * Throttle level between -1 - 1.
+     * Thrust level between -1 and 1.
      */
-    level: number,
+    thrust: number,
     /**
-     * The angle in degrees the hovercraft should be facing (up = 0°).
+     * The angle in degrees the hovercraft should be facing (right = 0°, up = 90°, left = 180°, down = -90°).
      */
     angle: number,
   },
@@ -142,6 +146,23 @@ export interface FinishedPlayersEvent {
 }
 
 /**
+ * The `race_over` event is sent when all players finished the game or the time runs out.
+ */
+export interface RaceOverEvent {
+  name: "race_over",
+  data: {
+    /**
+     * The players that have finished the game before the time ran out.
+     */
+    finished_players: FinishedPlayer[],
+    /**
+     * The IDs of the players that have not finished the game before the time ran out.
+     */
+    unfinished_players: string[],
+  },
+}
+
+/**
  * A hovercraft is a circle with a diameter of 1 unit.
  */
 export interface Hovercraft {
@@ -154,11 +175,11 @@ export interface Hovercraft {
      */
   velocity: Vec,
     /**
-     * The current throttle of the hovercraft.
+     * The current thrust level of the hovercraft.
      */
-  throttle: number,
+  thrust: number,
     /**
-     * The angle in degrees the hovercraft is facing (up = 0°).
+     * The angle in degrees the hovercraft is facing (right = 0°, up = 90°, left = 180°, down = -90°).
      */
   angle: number,
     /**
@@ -199,5 +220,5 @@ export interface Vec {
   y: number,
 }
 
-export type Commands = ReadyCmd | ThrottleCmd;
-export type Events = StartEvent | InProgressEvent | CountdownEvent | CheckpointsEvent | ReadyPlayersEvent | HovercraftsEvent | FinishedPlayersEvent;
+export type Commands = ReadyCmd | ControlCmd;
+export type Events = StartEvent | InProgressEvent | CountdownEvent | CheckpointsEvent | ReadyPlayersEvent | HovercraftsEvent | FinishedPlayersEvent | RaceOverEvent;
