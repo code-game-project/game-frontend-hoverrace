@@ -22,9 +22,11 @@
   const columWidths = "60% 20% 20%";
 
   let errors: string[] = [];
+  let canvasContainer: HTMLElement;
   let canvas: HTMLCanvasElement;
   let isFullscreen: boolean;
   let canvasContainerWidth: number;
+  let canvasContainerHeight: number;
   let width = 300;
   let height = (width / 16) * 9;
   let pixiApp: Application;
@@ -46,8 +48,9 @@
 
   const resize = () => {
     width = isFullscreen ? window.screen.availWidth : canvasContainerWidth;
-    height = isFullscreen ? window.screen.availHeight : (width / 16) * 9;
+    height = isFullscreen ? window.screen.availHeight : canvasContainerHeight-48;
     if (pixiApp) pixiApp.renderer.resize(width, height);
+    if (camera) camera.focus();
   };
 
   const unitMeasures = {
@@ -221,6 +224,7 @@
       autoDensity: true,
     });
     resize();
+    new ResizeObserver(resize).observe(canvasContainer)
     pixiApp.stage.addChild(map);
     map.addChild(checkpointContainer);
     map.addChild(hovercraftContainer);
@@ -267,7 +271,7 @@
 <Header />
 
 <main>
-  <section id="view" bind:clientWidth={canvasContainerWidth}>
+  <section id="view" bind:this={canvasContainer} bind:clientWidth={canvasContainerWidth} bind:clientHeight={canvasContainerHeight} on:resize={resize}>
     <Fullscreen bind:isFullscreen on:fullscreenChange={resize}>
       <canvas
         slot="content"
@@ -284,7 +288,7 @@
       />
     </Fullscreen>
   </section>
-  <section>
+  <section id="tableContainer">
     <Table minWidthPx={300}>
       <div slot="head">
         <TableRow {columWidths}>
@@ -346,15 +350,32 @@
 <Footer />
 
 <style lang="scss" scoped>
+  main {
+    max-width: unset;
+  }
+
   section#view {
     border: 1px solid var(--background-light);
     border-radius: var(--radius);
     overflow: hidden;
+    resize: both;
+    margin-left: auto;
+    margin-right: auto;
+    width: min(100%, 1000px);
+    aspect-ratio: 16/9;
+  }
+
+  #tableContainer {
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   canvas {
     width: 100%;
     background-color: #0f0f0f;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   span.username {
