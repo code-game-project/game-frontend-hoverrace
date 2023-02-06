@@ -272,24 +272,25 @@
 
 <Header />
 
+<section id="view" bind:this={canvasContainer} bind:clientWidth={canvasContainerWidth} bind:clientHeight={canvasContainerHeight} on:resize={resize}>
+  <Fullscreen bind:isFullscreen on:fullscreenChange={resize} bind:controlsHeight>
+    <canvas
+      slot="content"
+      bind:this={canvas}
+      {width}
+      {height}
+      on:wheel|preventDefault={(ev) => camera.scaleBy(ev.deltaY)}
+      on:mousedown={(ev) => {
+        camera.startDrag(ev.offsetX, ev.offsetY);
+        follow = null;
+      }}
+      on:mousemove={(ev) => camera.drag(ev.offsetX, ev.offsetY)}
+      on:mouseup={() => camera.stopDrag()}
+    />
+  </Fullscreen>
+</section>
+
 <main>
-  <section id="view" bind:this={canvasContainer} bind:clientWidth={canvasContainerWidth} bind:clientHeight={canvasContainerHeight} on:resize={resize}>
-    <Fullscreen bind:isFullscreen on:fullscreenChange={resize} bind:controlsHeight>
-      <canvas
-        slot="content"
-        bind:this={canvas}
-        {width}
-        {height}
-        on:wheel|preventDefault={(ev) => camera.scaleBy(ev.deltaY)}
-        on:mousedown={(ev) => {
-          camera.startDrag(ev.offsetX, ev.offsetY);
-          follow = null;
-        }}
-        on:mousemove={(ev) => camera.drag(ev.offsetX, ev.offsetY)}
-        on:mouseup={() => camera.stopDrag()}
-      />
-    </Fullscreen>
-  </section>
   <section id="tableContainer">
     <Table minWidthPx={300}>
       <div slot="head">
@@ -352,10 +353,6 @@
 <Footer />
 
 <style lang="scss" scoped>
-  main {
-    max-width: unset;
-  }
-
   section#view {
     border: 1px solid var(--background-light);
     border-radius: var(--radius);
@@ -364,13 +361,10 @@
     margin-left: auto;
     margin-right: auto;
     width: min(100%, 1000px);
+    max-width: 100%;
+    min-width: 500px;
+    min-height: 300px;
     aspect-ratio: 16/9;
-  }
-
-  #tableContainer {
-    max-width: 1000px;
-    margin-left: auto;
-    margin-right: auto;
   }
 
   canvas {

@@ -79,25 +79,27 @@
 		<slot name="content" />
 	</div>
 	{#if fullscreenSupport}
-		<div id="controls" bind:clientHeight={controlsHeight}>
-			{#if isFullscreen}
-				<ButtonIcon on:click={fsToggle}
-					><img src="/icons/minimize.svg" alt="Exit full screen" /></ButtonIcon
-				>
-			{:else}
-				<ButtonIcon
-					><img
-						on:click={fsToggle}
-						src="/icons/maximize.svg"
-						alt="Show in full screen"
-					/></ButtonIcon
-				>
-			{/if}
+		<div id="controls-container" bind:clientHeight={controlsHeight}>
+			<div id="controls">
+				{#if isFullscreen}
+					<ButtonIcon on:click={fsToggle}
+						><img src="/icons/minimize.svg" alt="Exit full screen" /></ButtonIcon
+					>
+				{:else}
+					<ButtonIcon
+						><img
+							on:click={fsToggle}
+							src="/icons/maximize.svg"
+							alt="Show in full screen"
+						/></ButtonIcon
+					>
+				{/if}
+			</div>
 		</div>
 	{/if}
 </div>
 
-<style>
+<style lang="scss" scoped>
 	div.fs {
 		display: flex;
 		flex-direction: column;
@@ -110,11 +112,15 @@
 		overflow: auto;
 	}
 
-	div#controls {
-		display: flex;
-		justify-content: right;
+	div#controls-container {
 		width: 100%;
 		padding: var(--padding);
 		background-color: var(--background-light);
+		pointer-events: none;
+		div#controls {
+			display: flex;
+			justify-content: right;
+			pointer-events: all;
+		}
 	}
 </style>
