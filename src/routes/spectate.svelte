@@ -27,6 +27,8 @@
   let isFullscreen: boolean;
   let canvasContainerWidth: number;
   let canvasContainerHeight: number;
+  let controlsHeight: number;
+  $: controlsHeight && resize()
   let width = 300;
   let height = (width / 16) * 9;
   let pixiApp: Application;
@@ -48,7 +50,7 @@
 
   const resize = () => {
     width = isFullscreen ? window.screen.availWidth : canvasContainerWidth;
-    height = isFullscreen ? window.screen.availHeight : canvasContainerHeight-48;
+    height = isFullscreen ? window.screen.availHeight : canvasContainerHeight-controlsHeight;
     if (pixiApp) pixiApp.renderer.resize(width, height);
     if (camera) camera.focus();
   };
@@ -272,7 +274,7 @@
 
 <main>
   <section id="view" bind:this={canvasContainer} bind:clientWidth={canvasContainerWidth} bind:clientHeight={canvasContainerHeight} on:resize={resize}>
-    <Fullscreen bind:isFullscreen on:fullscreenChange={resize}>
+    <Fullscreen bind:isFullscreen on:fullscreenChange={resize} bind:controlsHeight>
       <canvas
         slot="content"
         bind:this={canvas}

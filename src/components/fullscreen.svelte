@@ -4,6 +4,7 @@
 	const dispatch = createEventDispatcher();
 
 	export let maxHeightPx: number | null = null;
+	export let controlsHeight: number = 0;
 
 	const noop = () => {};
 	export let isFullscreen = false;
@@ -78,7 +79,7 @@
 		<slot name="content" />
 	</div>
 	{#if fullscreenSupport}
-		<div id="controls">
+		<div id="controls" bind:clientHeight={controlsHeight}>
 			{#if isFullscreen}
 				<ButtonIcon on:click={fsToggle}
 					><img src="/icons/minimize.svg" alt="Exit full screen" /></ButtonIcon
