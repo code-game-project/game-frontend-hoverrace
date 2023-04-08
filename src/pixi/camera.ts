@@ -30,8 +30,6 @@ export class Camera {
   }
 
   public setScale(scale: number) {
-    this.app.stage.enableTempParent
-
     this.scale = scale;
     this.app.stage.scale.set(this.scale);
 
